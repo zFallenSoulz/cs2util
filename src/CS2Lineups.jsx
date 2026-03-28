@@ -333,7 +333,7 @@ export default function CS2Lineups() {
   const map = MAPS[activeMap];
   const primaryUtil = activeUtils[activeUtils.length - 1] || "smoke";
   const utilMeta = UTIL_TYPES.find(u => u.key === primaryUtil);
-  const filtered = useMemo(() => map.lineups.filter(l => activeUtils.includes(l.type) && !hiddenIds.includes(l.id)), [map, activeUtil, hiddenIds]);
+  const filtered = useMemo(() => map.lineups.filter(l => activeUtils.includes(l.type) && !hiddenIds.includes(l.id)), [map, activeUtils, hiddenIds]);
   const editFiltered = editDots.filter(d => activeUtils.includes(d.type) && visibleSides.includes(d.side));
   const visibleMaps = mapOrder.filter(k => MAPS[k] && !hiddenMaps.includes(k));
 
