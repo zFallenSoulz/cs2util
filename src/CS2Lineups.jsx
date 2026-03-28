@@ -2,41 +2,43 @@ const DUST2_RADAR = "data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX
 
 import { useState, useCallback, useMemo } from "react";
 
+const TAB_COLORS = ["#ff9e9e", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff", "#a0c4ff", "#bdb2ff", "#e8b5ff", "#ffc2f1"];
+
 const MAPS = {
-    ancient: {
-    name: "Ancient", color: "#ffadad",
+  ancient: {
+    name: "Ancient",
     lineups: []
   },
   anubis: {
-    name: "Anubis", color: "#ffd6a5",
+    name: "Anubis",
     lineups: []
   },
   dust2: {
-    name: "Dust II", color: "#fdffb6",
+    name: "Dust II",
     lineups: []
   },
   inferno: {
-    name: "Inferno", color: "#caffbf",
+    name: "Inferno",
     lineups: []
   },
   mirage: {
-    name: "Mirage", color: "#9bf6ff",
+    name: "Mirage",
     lineups: []
   },
   nuke: {
-    name: "Nuke", color: "#a0c4ff",
+    name: "Nuke",
     lineups: []
   },
   overpass: {
-    name: "Overpass", color: "#bdb2ff",
+    name: "Overpass",
     lineups: []
   },
   train: {
-    name: "Train", color: "#e8b5ff",
+    name: "Train",
     lineups: []
   },
   vertigo: {
-    name: "Vertigo", color: "#ffc2f1",
+    name: "Vertigo",
     lineups: []
   },
 };
@@ -50,16 +52,28 @@ const UTIL_TYPES = [
 
 // Detailed SVG outlines traced from radar images
 const MAP_OUTLINES = {
-  mirage: (
+  ancient: (
     <>
-      <rect x="20" y="10" width="25" height="25" rx="2" opacity="0.25" />
-      <text x="32" y="26" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
-      <rect x="55" y="35" width="20" height="25" rx="2" opacity="0.25" />
-      <text x="65" y="50" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
-      <rect x="40" y="30" width="12" height="35" rx="2" opacity="0.15" />
-      <text x="46" y="50" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
-      <rect x="40" y="65" width="25" height="20" rx="2" opacity="0.15" />
-      <text x="52" y="78" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+      <rect x="20" y="10" width="26" height="22" rx="2" opacity="0.25" />
+      <text x="33" y="24" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="55" y="20" width="22" height="22" rx="2" opacity="0.25" />
+      <text x="66" y="34" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="38" y="40" width="14" height="25" rx="2" opacity="0.15" />
+      <text x="45" y="55" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
+      <rect x="35" y="72" width="28" height="16" rx="2" opacity="0.15" />
+      <text x="49" y="82" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+    </>
+  ),
+  anubis: (
+    <>
+      <rect x="22" y="12" width="24" height="24" rx="2" opacity="0.25" />
+      <text x="34" y="28" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="55" y="15" width="22" height="24" rx="2" opacity="0.25" />
+      <text x="66" y="30" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="38" y="50" width="24" height="20" rx="2" opacity="0.15" />
+      <text x="50" y="63" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
+      <rect x="38" y="75" width="24" height="12" rx="2" opacity="0.15" />
+      <text x="50" y="83" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
     </>
   ),
   // Dust 2 traced from Simple Radar image
@@ -80,29 +94,88 @@ const MAP_OUTLINES = {
       <text x="50" y="77" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
     </>
   ),
-  anubis: (
+  mirage: (
     <>
-      <rect x="22" y="12" width="24" height="24" rx="2" opacity="0.25" />
-      <text x="34" y="28" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
-      <rect x="55" y="15" width="22" height="24" rx="2" opacity="0.25" />
-      <text x="66" y="30" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
-      <rect x="38" y="50" width="24" height="20" rx="2" opacity="0.15" />
-      <text x="50" y="63" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
-      <rect x="38" y="75" width="24" height="12" rx="2" opacity="0.15" />
-      <text x="50" y="83" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+      <rect x="20" y="10" width="25" height="25" rx="2" opacity="0.25" />
+      <text x="32" y="26" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="55" y="35" width="20" height="25" rx="2" opacity="0.25" />
+      <text x="65" y="50" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="40" y="30" width="12" height="35" rx="2" opacity="0.15" />
+      <text x="46" y="50" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
+      <rect x="40" y="65" width="25" height="20" rx="2" opacity="0.15" />
+      <text x="52" y="78" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+    </>
+  ),
+  nuke: (
+    <>
+      <rect x="25" y="12" width="30" height="20" rx="2" opacity="0.25" />
+      <text x="40" y="25" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="25" y="38" width="30" height="20" rx="2" opacity="0.25" />
+      <text x="40" y="51" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="60" y="25" width="16" height="30" rx="2" opacity="0.15" />
+      <text x="68" y="43" fontSize="3.5" fill="currentColor" opacity="0.4" textAnchor="middle">Ramp</text>
+      <rect x="30" y="68" width="30" height="18" rx="2" opacity="0.15" />
+      <text x="45" y="80" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+    </>
+  ),
+  overpass: (
+    <>
+      <rect x="50" y="10" width="28" height="22" rx="2" opacity="0.25" />
+      <text x="64" y="24" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="18" y="45" width="25" height="22" rx="2" opacity="0.25" />
+      <text x="30" y="59" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="40" y="30" width="12" height="20" rx="2" opacity="0.15" />
+      <text x="46" y="43" fontSize="3.5" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
+      <rect x="55" y="70" width="24" height="16" rx="2" opacity="0.15" />
+      <text x="67" y="80" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+    </>
+  ),
+  train: (
+    <>
+      <rect x="55" y="15" width="24" height="28" rx="2" opacity="0.25" />
+      <text x="67" y="32" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="20" y="18" width="22" height="25" rx="2" opacity="0.25" />
+      <text x="31" y="34" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="38" y="50" width="22" height="15" rx="2" opacity="0.15" />
+      <text x="49" y="60" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
+      <rect x="35" y="75" width="28" height="14" rx="2" opacity="0.15" />
+      <text x="49" y="84" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
+    </>
+  ),
+  vertigo: (
+    <>
+      <rect x="30" y="10" width="26" height="22" rx="2" opacity="0.25" />
+      <text x="43" y="24" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">A</text>
+      <rect x="52" y="40" width="22" height="22" rx="2" opacity="0.25" />
+      <text x="63" y="54" fontSize="5" fill="currentColor" opacity="0.5" textAnchor="middle">B</text>
+      <rect x="30" y="38" width="18" height="20" rx="2" opacity="0.15" />
+      <text x="39" y="51" fontSize="3.5" fill="currentColor" opacity="0.4" textAnchor="middle">Mid</text>
+      <rect x="25" y="70" width="28" height="16" rx="2" opacity="0.15" />
+      <text x="39" y="80" fontSize="4" fill="currentColor" opacity="0.4" textAnchor="middle">T Spawn</text>
     </>
   ),
 };
 
 export default function CS2Lineups() {
-  // Profile code for cross-device sync
-  const [profileCode, setProfileCode] = useState(() => {
-    try { return localStorage.getItem("cs2util_profileCode") || ""; } catch { return ""; }
+  // Access code for future backend sync
+  const [accessCode, setAccessCode] = useState(() => {
+    try { return localStorage.getItem("cs2util_accessCode") || ""; } catch { return ""; }
   });
-  const [showProfile, setShowProfile] = useState(false);
-  const [profileInput, setProfileInput] = useState("");
+  const [codeInput, setCodeInput] = useState("");
 
-  const prefix = profileCode ? `cs2util_${profileCode}_` : "cs2util_";
+  // Export/import for cross-device sync
+  const [showSync, setShowSync] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [syncMsg, setSyncMsg] = useState("");
+
+  const prefix = accessCode ? `cs2util_${accessCode}_` : "cs2util_";
+
+  const saveAccessCode = (code) => {
+    const trimmed = code.trim();
+    localStorage.setItem("cs2util_accessCode", trimmed);
+    setAccessCode(trimmed);
+    window.location.reload();
+  };
 
   // Load persisted state from localStorage
   const load = (key, fallback) => {
@@ -131,7 +204,14 @@ export default function CS2Lineups() {
   const [selectedEditOrigin, setSelectedEditOrigin] = useState(null);
   const [editName, setEditName] = useState("");
   const [hiddenIds, setHiddenIds] = useState(() => load("hiddenIds", []));
-  const [mapOrder, setMapOrder] = useState(() => load("mapOrder", Object.keys(MAPS)));
+  const [mapOrder, setMapOrder] = useState(() => {
+    const saved = load("mapOrder", null);
+    if (!saved) return Object.keys(MAPS);
+    // Add any new maps not in saved order
+    const allKeys = Object.keys(MAPS);
+    const missing = allKeys.filter(k => !saved.includes(k));
+    return [...saved.filter(k => MAPS[k]), ...missing];
+  });
   const [hiddenMaps, setHiddenMaps] = useState(() => load("hiddenMaps", []));
   const [showMapMenu, setShowMapMenu] = useState(false);
   const [customTitle, setCustomTitle] = useState(() => load("customTitle", "MY LINEUPS"));
@@ -156,6 +236,13 @@ export default function CS2Lineups() {
   const filtered = useMemo(() => map.lineups.filter(l => l.type === activeUtil && !hiddenIds.includes(l.id)), [map, activeUtil, hiddenIds]);
   const editFiltered = editDots.filter(d => d.type === activeUtil);
   const visibleMaps = mapOrder.filter(k => MAPS[k] && !hiddenMaps.includes(k));
+
+  // Color by position in mapOrder (1st = color 1, 2nd = color 2, etc.)
+  const getMapColor = (key) => {
+    const idx = mapOrder.indexOf(key);
+    return TAB_COLORS[(idx >= 0 ? idx : 0) % TAB_COLORS.length];
+  };
+  const mapColor = getMapColor(activeMap);
 
   const handleSpotClick = useCallback((lineup) => {
     if (editMode) return;
@@ -275,25 +362,47 @@ export default function CS2Lineups() {
   const setActiveMapP = (k) => { setActiveMap(k); save("activeMap", k); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); setSelectedEditOrigin(null); if (editMode) setEditStep("place_landing"); };
   const setActiveUtilP = (k) => { setActiveUtil(k); save("activeUtil", k); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); };
 
-  // Profile code switch
-  const switchProfile = (code) => {
-    const trimmed = code.trim();
-    localStorage.setItem("cs2util_profileCode", trimmed);
-    setProfileCode(trimmed);
-    setShowProfile(false);
-    // Force reload to pick up new prefix
-    window.location.reload();
+  // Export all data as a copyable string
+  const exportData = () => {
+    const data = { editDots, hiddenIds, mapOrder, hiddenMaps, customTitle, mapSize };
+    const str = btoa(JSON.stringify(data));
+    navigator.clipboard.writeText(str).then(() => setSyncMsg("Copied to clipboard!")).catch(() => {
+      // Fallback: select a textarea
+      setSyncMsg("Copy the text below:");
+      setImportText(str);
+    });
+  };
+
+  // Import data from a pasted string
+  const importData = () => {
+    try {
+      const data = JSON.parse(atob(importText.trim()));
+      if (data.editDots) updateEditDots(data.editDots);
+      if (data.hiddenIds) updateHiddenIds(data.hiddenIds);
+      if (data.mapOrder) updateMapOrder(data.mapOrder);
+      if (data.hiddenMaps) updateHiddenMaps(data.hiddenMaps);
+      if (data.customTitle) saveTitle(data.customTitle);
+      if (data.mapSize) { setMapSize(data.mapSize); save("mapSize", data.mapSize); }
+      setSyncMsg("Imported successfully!");
+      setTimeout(() => { setSyncMsg(""); setShowSync(false); setImportText(""); }, 1500);
+    } catch {
+      setSyncMsg("Invalid data — check your paste");
+    }
   };
 
   // Minimap resize
   const handleResizeStart = useCallback((e) => {
     e.preventDefault();
     setResizing(true);
+    const startX = e.touches ? e.touches[0].clientX : e.clientX;
     const startY = e.touches ? e.touches[0].clientY : e.clientY;
     const startSize = mapSize;
     const onMove = (ev) => {
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
       const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      const delta = clientY - startY;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
+      const delta = Math.max(dx, dy);
       const newSize = Math.max(200, Math.min(800, startSize + delta));
       setMapSize(newSize);
     };
@@ -313,10 +422,10 @@ export default function CS2Lineups() {
   }, [mapSize]);
 
   const btnStyle = (active, color) => ({
-    padding: "6px 14px", fontSize: 12, fontWeight: 600, fontFamily: "Barlow Condensed",
+    padding: "6px 14px", fontSize: 18, fontWeight: 600, fontFamily: "Barlow Condensed",
     letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
     background: active ? `${color}25` : "rgba(255,255,255,0.03)",
-    color: active ? color : "#777",
+    color: active ? color : "#888",
     border: `1px solid ${active ? `${color}50` : "rgba(255,255,255,0.06)"}`,
     borderRadius: 6,
   });
@@ -337,16 +446,9 @@ export default function CS2Lineups() {
           ) : (
             <h1 onClick={() => setEditingTitle(true)} style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#f0f0f0", cursor: "pointer" }} title="Click to rename">{customTitle}</h1>
           )}
-          <button onClick={() => { setShowProfile(true); setProfileInput(profileCode); }} style={{
-            padding: "4px 8px", fontSize: 11, fontWeight: 600, fontFamily: "Barlow Condensed",
-            letterSpacing: "0.08em", cursor: "pointer", borderRadius: 4,
-            background: profileCode ? "#8ab4f815" : "rgba(255,255,255,0.03)",
-            color: profileCode ? "#8ab4f8" : "#777",
-            border: `1px solid ${profileCode ? "#8ab4f830" : "rgba(255,255,255,0.06)"}`,
-            display: "flex", alignItems: "center", gap: 4,
-          }}>👤{profileCode ? ` ${profileCode}` : ""}</button>
+          {accessCode && <span style={{ fontSize: 10, color: "#8ab4f8", fontFamily: "Barlow Condensed", letterSpacing: "0.08em", background: "#8ab4f810", padding: "2px 8px", borderRadius: 3, border: "1px solid #8ab4f820" }}>{accessCode}</span>}
           <button onClick={toggleEditMode} style={{
-            marginLeft: "auto", padding: "5px 16px", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani",
+            marginLeft: "auto", padding: "5px 16px", fontSize: 18, fontWeight: 700, fontFamily: "Rajdhani",
             letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", borderRadius: 5,
             background: editMode ? "#2a8a4a25" : "rgba(255,255,255,0.05)",
             color: editMode ? "#4ade80" : "#999",
@@ -358,18 +460,18 @@ export default function CS2Lineups() {
             const m = MAPS[key];
             return (
               <button key={key} onClick={() => setActiveMapP(key)} style={{
-                padding: "8px 18px", fontSize: 13, fontWeight: activeMap === key ? 700 : 500, fontFamily: "Rajdhani",
+                padding: "8px 18px", fontSize: 16, fontWeight: activeMap === key ? 700 : 500, fontFamily: "Rajdhani",
                 letterSpacing: "0.1em", textTransform: "uppercase",
                 background: activeMap === key ? "rgba(255,255,255,0.08)" : "transparent",
-                color: activeMap === key ? m.color : "#777", border: "none",
-                borderBottom: activeMap === key ? `2px solid ${m.color}` : "2px solid transparent",
+                color: activeMap === key ? getMapColor(key) : "#888", border: "none",
+                borderBottom: activeMap === key ? `2px solid ${getMapColor(key)}` : "2px solid transparent",
                 cursor: "pointer", transition: "all 0.2s", borderRadius: "4px 4px 0 0",
               }}>{m.name}</button>
             );
           })}
           <button onClick={() => setShowMapMenu(true)} style={{
-            padding: "6px 10px", fontSize: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
-            color: "#777", cursor: "pointer", borderRadius: 4, marginLeft: 4, fontFamily: "Barlow Condensed",
+            padding: "6px 10px", fontSize: 18, background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+            color: "#888", cursor: "pointer", borderRadius: 4, marginLeft: 4, fontFamily: "Barlow Condensed",
           }} title="Manage maps">⚙</button>
         </div>
       </div>
@@ -381,100 +483,88 @@ export default function CS2Lineups() {
           <div onClick={e => e.stopPropagation()} style={{ background: "#1a1c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 20, width: "100%", maxWidth: 340 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f0f0f0", fontFamily: "Rajdhani", letterSpacing: "0.1em" }}>MANAGE MAPS</h3>
-              <button onClick={() => setShowMapMenu(false)} style={{ background: "none", border: "none", color: "#777", fontSize: 18, cursor: "pointer" }}>✕</button>
+              <button onClick={() => setShowMapMenu(false)} style={{ background: "none", border: "none", color: "#888", fontSize: 18, cursor: "pointer" }}>✕</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {mapOrder.filter(k => MAPS[k]).map((key, idx) => {
                 const m = MAPS[key];
                 const isHidden = hiddenMaps.includes(key);
                 return (
-                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: isHidden ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.04)", border: `1px solid ${isHidden ? "rgba(255,255,255,0.04)" : `${m.color}30`}`, borderRadius: 6, opacity: isHidden ? 0.5 : 1 }}>
+                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: isHidden ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.04)", border: `1px solid ${isHidden ? "rgba(255,255,255,0.04)" : `${getMapColor(key)}30`}`, borderRadius: 6, opacity: isHidden ? 0.5 : 1 }}>
                     <button onClick={() => moveMap(key, -1)} disabled={idx === 0}
-                      style={{ padding: "2px 6px", fontSize: 14, background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: idx === 0 ? "#777" : "#888", cursor: idx === 0 ? "default" : "pointer" }}>↑</button>
+                      style={{ padding: "2px 6px", fontSize: 17, background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: idx === 0 ? "#888" : "#888", cursor: idx === 0 ? "default" : "pointer" }}>↑</button>
                     <button onClick={() => moveMap(key, 1)} disabled={idx === mapOrder.length - 1}
-                      style={{ padding: "2px 6px", fontSize: 14, background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: idx === mapOrder.length - 1 ? "#777" : "#888", cursor: idx === mapOrder.length - 1 ? "default" : "pointer" }}>↓</button>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: isHidden ? "#777" : m.color, fontFamily: "Rajdhani", letterSpacing: "0.08em", flex: 1 }}>{m.name}</span>
+                      style={{ padding: "2px 6px", fontSize: 17, background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: idx === mapOrder.length - 1 ? "#888" : "#888", cursor: idx === mapOrder.length - 1 ? "default" : "pointer" }}>↓</button>
+                    <span style={{ fontSize: 17, fontWeight: 600, color: isHidden ? "#888" : getMapColor(key), fontFamily: "Rajdhani", letterSpacing: "0.08em", flex: 1 }}>{m.name}</span>
                     <button onClick={() => toggleMapVisibility(key)} style={{
-                      padding: "3px 10px", fontSize: 11, fontFamily: "Barlow Condensed", fontWeight: 600, borderRadius: 4, cursor: "pointer",
-                      background: isHidden ? "rgba(255,255,255,0.03)" : `${m.color}20`,
-                      color: isHidden ? "#777" : m.color,
-                      border: `1px solid ${isHidden ? "rgba(255,255,255,0.06)" : `${m.color}40`}`,
+                      padding: "3px 10px", fontSize: 17, fontFamily: "Barlow Condensed", fontWeight: 600, borderRadius: 4, cursor: "pointer",
+                      background: isHidden ? "rgba(255,255,255,0.03)" : `${getMapColor(key)}20`,
+                      color: isHidden ? "#888" : getMapColor(key),
+                      border: `1px solid ${isHidden ? "rgba(255,255,255,0.06)" : `${getMapColor(key)}40`}`,
                     }}>{isHidden ? "SHOW" : "HIDE"}</button>
                   </div>
                 );
               })}
             </div>
+            {/* Access Code */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ fontSize: 12, color: "#888", fontFamily: "Barlow Condensed", letterSpacing: "0.08em", marginBottom: 6 }}>ACCESS CODE</div>
+              <p style={{ fontSize: 11, color: "#666", fontFamily: "Barlow Condensed", lineHeight: 1.5, margin: "0 0 8px" }}>
+                Sets your storage namespace. Same code = same data. Will sync across devices once backend is added.
+              </p>
+              {accessCode && <div style={{ fontSize: 12, color: "#8ab4f8", fontFamily: "Barlow Condensed", marginBottom: 6, padding: "4px 8px", background: "#8ab4f810", borderRadius: 4, display: "inline-block" }}>Current: {accessCode}</div>}
+              <div style={{ display: "flex", gap: 6 }}>
+                <input type="text" value={codeInput} onChange={e => setCodeInput(e.target.value)}
+                  placeholder={accessCode || "Enter a code"}
+                  style={{ flex: 1, padding: "6px 10px", fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
+                <button onClick={() => saveAccessCode(codeInput)} disabled={!codeInput.trim()} style={{
+                  padding: "6px 12px", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani", borderRadius: 5, cursor: codeInput.trim() ? "pointer" : "default",
+                  background: codeInput.trim() ? "#8ab4f815" : "rgba(255,255,255,0.02)", color: codeInput.trim() ? "#8ab4f8" : "#555",
+                  border: `1px solid ${codeInput.trim() ? "#8ab4f830" : "rgba(255,255,255,0.04)"}`,
+                }}>SET</button>
+              </div>
+              {accessCode && <button onClick={() => saveAccessCode("")} style={{
+                marginTop: 6, width: "100%", padding: "5px", fontSize: 11, fontFamily: "Barlow Condensed",
+                background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 4,
+                color: "#666", cursor: "pointer",
+              }}>Clear code (local only)</button>}
+            </div>
+            {/* Sync / Export-Import */}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ fontSize: 12, color: "#888", fontFamily: "Barlow Condensed", letterSpacing: "0.08em", marginBottom: 8 }}>SYNC ACROSS DEVICES</div>
+              <button onClick={exportData} style={{
+                width: "100%", padding: "8px", fontSize: 13, fontWeight: 700, fontFamily: "Rajdhani", borderRadius: 5, cursor: "pointer",
+                background: "#4ade8015", color: "#4ade80", border: "1px solid #4ade8030", letterSpacing: "0.1em", marginBottom: 8,
+              }}>↑ EXPORT TO CLIPBOARD</button>
+              <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                placeholder="Paste exported data here"
+                rows={2}
+                style={{ width: "100%", padding: "6px 10px", fontSize: 11, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none", resize: "none", marginBottom: 6, boxSizing: "border-box" }} />
+              <button onClick={importData} disabled={!importText.trim()} style={{
+                width: "100%", padding: "8px", fontSize: 13, fontWeight: 700, fontFamily: "Rajdhani", borderRadius: 5, cursor: importText.trim() ? "pointer" : "default",
+                background: importText.trim() ? "#8ab4f815" : "rgba(255,255,255,0.02)", color: importText.trim() ? "#8ab4f8" : "#555",
+                border: `1px solid ${importText.trim() ? "#8ab4f830" : "rgba(255,255,255,0.04)"}`, letterSpacing: "0.1em",
+              }}>↓ IMPORT</button>
+              {syncMsg && <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 4, fontSize: 12, fontFamily: "Barlow Condensed", textAlign: "center", background: syncMsg.includes("!") ? "#4ade8012" : "#e0555512", color: syncMsg.includes("!") ? "#4ade80" : "#e05555" }}>{syncMsg}</div>}
+            </div>
           </div>
         </div>
       )}
-
-      {/* Profile modal */}
-      {showProfile && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
-          onClick={() => setShowProfile(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#1a1c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 20, width: "100%", maxWidth: 340 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f0f0f0", fontFamily: "Rajdhani", letterSpacing: "0.1em" }}>PROFILE SYNC</h3>
-              <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", color: "#777", fontSize: 18, cursor: "pointer" }}>✕</button>
-            </div>
-            <p style={{ fontSize: 12, color: "#888", fontFamily: "Barlow Condensed", lineHeight: 1.6, margin: "0 0 12px" }}>
-              Enter the same code on any device to share your lineups. Leave empty for local-only storage.
-            </p>
-            {profileCode && <div style={{ fontSize: 11, color: "#777", fontFamily: "Barlow Condensed", marginBottom: 8 }}>Current: <span style={{ color: "#8ab4f8" }}>{profileCode}</span></div>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <input type="text" value={profileInput} onChange={e => setProfileInput(e.target.value)}
-                placeholder="Enter your sync code"
-                style={{ flex: 1, padding: "8px 12px", fontSize: 13, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
-              <button onClick={() => switchProfile(profileInput)} style={{
-                padding: "8px 16px", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani", borderRadius: 6, cursor: "pointer",
-                background: "#8ab4f820", color: "#8ab4f8", border: "1px solid #8ab4f840",
-              }}>LOAD</button>
-            </div>
-            {profileCode && <button onClick={() => switchProfile("")} style={{
-              marginTop: 10, width: "100%", padding: "6px", fontSize: 11, fontFamily: "Barlow Condensed",
-              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 4,
-              color: "#777", cursor: "pointer",
-            }}>Clear profile (use local only)</button>}
-          </div>
-        </div>
-      )}
-
-      {/* Utility filter + side selector */}
-      <div style={{ display: "flex", gap: 4, padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", flexWrap: "wrap", alignItems: "center" }}>
-        {UTIL_TYPES.map(u => {
-          const count = map.lineups.filter(l => l.type === u.key && !hiddenIds.includes(l.id)).length + editDots.filter(d => d.type === u.key).length;
-          return (
-            <button key={u.key} onClick={() => setActiveUtilP(u.key)} style={{
-              ...btnStyle(activeUtil === u.key, u.color), display: "flex", alignItems: "center", gap: 6,
-            }}>
-              <span>{u.icon}</span><span>{u.label}</span>
-              <span style={{ fontSize: 10, opacity: 0.6, background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 3 }}>{count}</span>
-            </button>
-          );
-        })}
-        {editMode && (
-          <>
-            <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.1)", margin: "0 8px" }} />
-            <button onClick={() => setEditSide("ct")} style={btnStyle(editSide === "ct", CT_COLOR)}>🛡 CT</button>
-            <button onClick={() => setEditSide("t")} style={btnStyle(editSide === "t", T_COLOR)}>💀 T</button>
-          </>
-        )}
-      </div>
 
       {/* Edit instructions */}
       {editMode && (
         <div style={{ padding: "8px 20px", background: `${sideColor}08`, borderBottom: `1px solid ${sideColor}20`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: sideColor, fontFamily: "Barlow Condensed", fontWeight: 600, letterSpacing: "0.1em" }}>
+          <span style={{ fontSize: 18, color: sideColor, fontFamily: "Barlow Condensed", fontWeight: 600, letterSpacing: "0.1em" }}>
             {editStep === "place_origin"
               ? `② CLICK TO ADD THROW ORIGINS (${editDots.find(d => d.id === activeEditId)?.origins.length || 0} placed)`
               : "① CLICK LANDING SPOT"}
           </span>
           {editStep === "place_origin" && (
-            <button onClick={finishPlacingOrigins} style={{ fontSize: 11, padding: "3px 12px", background: `${sideColor}20`, border: `1px solid ${sideColor}40`, borderRadius: 4, color: sideColor, cursor: "pointer", fontFamily: "Barlow Condensed", fontWeight: 600 }}>✓ DONE</button>
+            <button onClick={finishPlacingOrigins} style={{ fontSize: 17, padding: "3px 12px", background: `${sideColor}20`, border: `1px solid ${sideColor}40`, borderRadius: 4, color: sideColor, cursor: "pointer", fontFamily: "Barlow Condensed", fontWeight: 600 }}>✓ DONE</button>
           )}
           {editStep === "place_landing" && (
             <input type="text" placeholder="Name (optional)" value={editName} onChange={e => setEditName(e.target.value)}
-              style={{ marginLeft: "auto", padding: "4px 10px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#d4d4d8", fontFamily: "Barlow Condensed", width: 160, outline: "none" }} />
+              style={{ marginLeft: "auto", padding: "4px 10px", fontSize: 18, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#d4d4d8", fontFamily: "Barlow Condensed", width: 160, outline: "none" }} />
           )}
         </div>
       )}
@@ -482,8 +572,29 @@ export default function CS2Lineups() {
       {/* Main */}
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 360px", padding: 20, minWidth: 300 }}>
+          {/* Utility filter — same container as minimap so widths match */}
+          <div id="util-grid" style={{ width: "100%", maxWidth: mapSize, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, marginBottom: 8 }}>
+            {UTIL_TYPES.map(u => {
+              const count = map.lineups.filter(l => l.type === u.key && !hiddenIds.includes(l.id)).length + editDots.filter(d => d.type === u.key).length;
+              return (
+                <button key={u.key} onClick={() => setActiveUtilP(u.key)} style={{
+                  ...btnStyle(activeUtil === u.key, u.color), display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 6px",
+                }}>
+                  <span>{u.icon}</span><span>{u.label}</span>
+                  <span style={{ fontSize: 13, opacity: 0.6, background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 3 }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          {editMode && (
+            <div style={{ width: "100%", maxWidth: mapSize, display: "flex", gap: 4, marginBottom: 8 }}>
+              <button onClick={() => setEditSide("ct")} style={{ ...btnStyle(editSide === "ct", CT_COLOR), flex: 1, textAlign: "center" }}>🛡 CT</button>
+              <button onClick={() => setEditSide("t")} style={{ ...btnStyle(editSide === "t", T_COLOR), flex: 1, textAlign: "center" }}>💀 T</button>
+            </div>
+          )}
+          <style>{"@media (max-width: 500px) { #util-grid { grid-template-columns: repeat(2, 1fr) !important; } }"}</style>
           <div id="minimap-container" style={{ position: "relative", background: "rgba(255,255,255,0.02)", border: `1px solid ${editMode ? `${sideColor}30` : "rgba(255,255,255,0.06)"}`, borderRadius: 10, overflow: "hidden", width: "100%", maxWidth: mapSize, aspectRatio: "1", cursor: editMode ? "crosshair" : "default" }}>
-            <svg id="lineup-svg" viewBox="0 0 100 100" onClick={handleSvgClick} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", color: map.color, touchAction: "none" }}>
+            <svg id="lineup-svg" viewBox="0 0 100 100" onClick={handleSvgClick} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", color: mapColor, touchAction: "none" }}>
               {MAP_OUTLINES[activeMap]}
 
               {/* Hardcoded lines */}
@@ -581,19 +692,19 @@ export default function CS2Lineups() {
 
           {/* Lineup list */}
           <div style={{ marginTop: 14 }}>
-            {filtered.length === 0 && editFiltered.length === 0 && !editMode && <div style={{ textAlign: "center", padding: 30, color: "#777", fontSize: 13, fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>No {activeUtil}s saved for {map.name} yet</div>}
-            {editMode && editFiltered.length === 0 && <div style={{ textAlign: "center", padding: 20, color: "#777", fontSize: 12, fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>Click the map to start placing lineups</div>}
+            {filtered.length === 0 && editFiltered.length === 0 && !editMode && <div style={{ textAlign: "center", padding: 30, color: "#888", fontSize: 16, fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>No {activeUtil}s saved for {map.name} yet</div>}
+            {editMode && editFiltered.length === 0 && <div style={{ textAlign: "center", padding: 20, color: "#888", fontSize: 18, fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>Click the map to start placing lineups</div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {/* Hardcoded lineups */}
               {!editMode && filtered.map(lineup => (
                 <div key={lineup.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: selectedSpot?.id === lineup.id ? `${utilMeta.color}12` : "rgba(255,255,255,0.02)", border: `1px solid ${selectedSpot?.id === lineup.id ? `${utilMeta.color}30` : "rgba(255,255,255,0.04)"}`, borderRadius: 6, cursor: "pointer", color: "#d4d4d8", fontFamily: "Barlow Condensed" }}>
                   <div onClick={() => handleSpotClick(lineup)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: utilMeta.color, opacity: 0.7, background: `${utilMeta.color}15`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.1em", flexShrink: 0 }}>{lineup.site}</span>
-                    <span style={{ fontSize: 14, fontWeight: 500 }}>{lineup.name}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "#777", flexShrink: 0 }}>{lineup.origins.length} origin{lineup.origins.length !== 1 ? "s" : ""}</span>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: utilMeta.color, opacity: 0.7, background: `${utilMeta.color}15`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.1em", flexShrink: 0 }}>{lineup.site}</span>
+                    <span style={{ fontSize: 17, fontWeight: 500 }}>{lineup.name}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 17, color: "#888", flexShrink: 0 }}>{lineup.origins.length} origin{lineup.origins.length !== 1 ? "s" : ""}</span>
                   </div>
                   <button onClick={(e) => { e.stopPropagation(); updateHiddenIds(prev => [...prev, lineup.id]); if (selectedSpot?.id === lineup.id) { setSelectedSpot(null); setSelectedOrigin(null); } }}
-                    style={{ padding: "3px 6px", fontSize: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: "#777", cursor: "pointer", fontFamily: "Barlow Condensed", flexShrink: 0 }} title="Remove">✕</button>
+                    style={{ padding: "3px 6px", fontSize: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: "#888", cursor: "pointer", fontFamily: "Barlow Condensed", flexShrink: 0 }} title="Remove">✕</button>
                 </div>
               ))}
 
@@ -604,24 +715,24 @@ export default function CS2Lineups() {
                 return (
                   <div key={dot.id} style={{ padding: "8px 12px", background: isActive ? `${c}15` : `${c}08`, border: `1px solid ${isActive ? `${c}40` : `${c}20`}`, borderRadius: 6, cursor: "pointer", transition: "all 0.15s" }}>
                     <div onClick={() => toggleEditDot(dot.id)} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#000", background: c, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.1em" }}>{dot.side.toUpperCase()}</span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: isActive ? "#f0f0f0" : c }}>{dot.name}</span>
-                      <span style={{ marginLeft: "auto", fontSize: 11, color: "#777" }}>{dot.origins.length} origin{dot.origins.length !== 1 ? "s" : ""}</span>
-                      <span style={{ fontSize: 10, color: "#777", transform: isActive ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: "#000", background: c, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.1em" }}>{dot.side.toUpperCase()}</span>
+                      <span style={{ fontSize: 17, fontWeight: 500, color: isActive ? "#f0f0f0" : c }}>{dot.name}</span>
+                      <span style={{ marginLeft: "auto", fontSize: 17, color: "#888" }}>{dot.origins.length} origin{dot.origins.length !== 1 ? "s" : ""}</span>
+                      <span style={{ fontSize: 13, color: "#888", transform: isActive ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
                     </div>
                     {isActive && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${c}20`, display: "flex", flexDirection: "column", gap: 8 }}>
                         {editMode && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 11, color: "#777", fontFamily: "Barlow Condensed", width: 50, flexShrink: 0 }}>NAME</span>
+                          <span style={{ fontSize: 17, color: "#888", fontFamily: "Barlow Condensed", width: 50, flexShrink: 0 }}>NAME</span>
                           <input type="text" value={dot.name} onChange={e => renameEditDot(dot.id, e.target.value)} onClick={e => e.stopPropagation()}
-                            style={{ flex: 1, padding: "4px 8px", fontSize: 13, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
+                            style={{ flex: 1, padding: "4px 8px", fontSize: 16, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
                         </div>}
                         {editMode && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 11, color: "#777", fontFamily: "Barlow Condensed", width: 50, flexShrink: 0 }}>SIDE</span>
-                          <button onClick={(e) => { e.stopPropagation(); changeDotSide(dot.id, "ct"); }} style={{ padding: "3px 12px", fontSize: 11, fontWeight: 700, fontFamily: "Barlow Condensed", borderRadius: 4, cursor: "pointer", background: dot.side === "ct" ? `${CT_COLOR}30` : "rgba(255,255,255,0.03)", color: dot.side === "ct" ? CT_COLOR : "#777", border: `1px solid ${dot.side === "ct" ? `${CT_COLOR}50` : "rgba(255,255,255,0.06)"}` }}>CT</button>
-                          <button onClick={(e) => { e.stopPropagation(); changeDotSide(dot.id, "t"); }} style={{ padding: "3px 12px", fontSize: 11, fontWeight: 700, fontFamily: "Barlow Condensed", borderRadius: 4, cursor: "pointer", background: dot.side === "t" ? `${T_COLOR}30` : "rgba(255,255,255,0.03)", color: dot.side === "t" ? T_COLOR : "#777", border: `1px solid ${dot.side === "t" ? `${T_COLOR}50` : "rgba(255,255,255,0.06)"}` }}>T</button>
+                          <span style={{ fontSize: 17, color: "#888", fontFamily: "Barlow Condensed", width: 50, flexShrink: 0 }}>SIDE</span>
+                          <button onClick={(e) => { e.stopPropagation(); changeDotSide(dot.id, "ct"); }} style={{ padding: "3px 12px", fontSize: 17, fontWeight: 700, fontFamily: "Barlow Condensed", borderRadius: 4, cursor: "pointer", background: dot.side === "ct" ? `${CT_COLOR}30` : "rgba(255,255,255,0.03)", color: dot.side === "ct" ? CT_COLOR : "#888", border: `1px solid ${dot.side === "ct" ? `${CT_COLOR}50` : "rgba(255,255,255,0.06)"}` }}>CT</button>
+                          <button onClick={(e) => { e.stopPropagation(); changeDotSide(dot.id, "t"); }} style={{ padding: "3px 12px", fontSize: 17, fontWeight: 700, fontFamily: "Barlow Condensed", borderRadius: 4, cursor: "pointer", background: dot.side === "t" ? `${T_COLOR}30` : "rgba(255,255,255,0.03)", color: dot.side === "t" ? T_COLOR : "#888", border: `1px solid ${dot.side === "t" ? `${T_COLOR}50` : "rgba(255,255,255,0.06)"}` }}>T</button>
                         </div>}
-                        {dot.origins.length > 0 && <div style={{ fontSize: 11, color: "#777", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>THROW FROM:</div>}
+                        {dot.origins.length > 0 && <div style={{ fontSize: 17, color: "#888", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>THROW FROM:</div>}
                         {dot.origins.map((o, i) => (
                           <div key={i} onClick={(e) => { e.stopPropagation(); setSelectedEditOrigin(prev => prev === i ? null : i); }} style={{
                             display: "flex", alignItems: "center", gap: 8, padding: "4px 8px",
@@ -629,25 +740,25 @@ export default function CS2Lineups() {
                             border: `1px solid ${selectedEditOrigin === i ? `${c}30` : "rgba(255,255,255,0.04)"}`,
                             borderRadius: 4, cursor: "pointer",
                           }}>
-                            <div style={{ width: 18, height: 18, borderRadius: "50%", background: selectedEditOrigin === i ? c : "rgba(255,255,255,0.08)", color: selectedEditOrigin === i ? "#000" : "#888", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                            <div style={{ width: 18, height: 18, borderRadius: "50%", background: selectedEditOrigin === i ? c : "rgba(255,255,255,0.08)", color: selectedEditOrigin === i ? "#000" : "#888", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
                             {editMode ? (
                               <input type="text" value={o.label || ""} onChange={e => { e.stopPropagation(); renameEditOrigin(dot.id, i, e.target.value); }} onClick={e => e.stopPropagation()} onFocus={() => setSelectedEditOrigin(i)}
                                 placeholder="Name this origin"
-                                style={{ flex: 1, minWidth: 80, padding: "2px 6px", fontSize: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
+                                style={{ flex: 1, minWidth: 80, padding: "2px 6px", fontSize: 18, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
                             ) : (
-                              <span style={{ fontSize: 12, color: selectedEditOrigin === i ? "#f0f0f0" : "#888" }}>{o.label || `Origin ${i+1}`}</span>
+                              <span style={{ fontSize: 18, color: selectedEditOrigin === i ? "#f0f0f0" : "#888" }}>{o.label || `Origin ${i+1}`}</span>
                             )}
-                            <span style={{ fontSize: 9, color: "#666", fontFamily: "Barlow Condensed", flexShrink: 0 }}>({o.x.toFixed(0)},{o.y.toFixed(0)})</span>
+                            <span style={{ fontSize: 18, color: "#888", fontFamily: "Barlow Condensed", flexShrink: 0 }}>({o.x.toFixed(0)},{o.y.toFixed(0)})</span>
                             {editMode && <button onClick={(e) => { e.stopPropagation(); deleteEditOrigin(dot.id, i); }}
-                              style={{ padding: "2px 6px", fontSize: 9, background: "#e0555510", border: "1px solid #e0555525", borderRadius: 3, color: "#e05555", cursor: "pointer", flexShrink: 0 }}>✕</button>}
+                              style={{ padding: "2px 6px", fontSize: 18, background: "#e0555510", border: "1px solid #e0555525", borderRadius: 3, color: "#e05555", cursor: "pointer", flexShrink: 0 }}>✕</button>}
                           </div>
                         ))}
-                        {dot.origins.length === 0 && <div style={{ fontSize: 11, color: "#666", fontStyle: "italic" }}>No origins yet</div>}
+                        {dot.origins.length === 0 && <div style={{ fontSize: 14, color: "#777", fontStyle: "italic" }}>No origins yet</div>}
                         <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                           {editMode && <button onClick={(e) => { e.stopPropagation(); setActiveEditId(dot.id); setEditStep("place_origin"); }}
-                            style={{ flex: 1, padding: "5px 10px", fontSize: 11, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, color: c, cursor: "pointer", fontFamily: "Barlow Condensed", fontWeight: 600 }}>+ ADD ORIGIN</button>}
+                            style={{ flex: 1, padding: "5px 10px", fontSize: 17, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, color: c, cursor: "pointer", fontFamily: "Barlow Condensed", fontWeight: 600 }}>+ ADD ORIGIN</button>}
                           <button onClick={(e) => { e.stopPropagation(); deleteEditDot(dot.id); }}
-                            style={{ marginLeft: editMode ? 0 : "auto", padding: "5px 10px", fontSize: 11, background: "#e0555515", border: "1px solid #e0555530", borderRadius: 4, color: "#e05555", cursor: "pointer", fontFamily: "Barlow Condensed", fontWeight: 600 }}>✕ DELETE</button>
+                            style={{ marginLeft: editMode ? 0 : "auto", padding: "5px 10px", fontSize: 17, background: "#e0555515", border: "1px solid #e0555530", borderRadius: 4, color: "#e05555", cursor: "pointer", fontFamily: "Barlow Condensed", fontWeight: 600 }}>✕ DELETE</button>
                         </div>
                       </div>
                     )}
@@ -663,23 +774,23 @@ export default function CS2Lineups() {
           {editMode ? (
             <div style={{ padding: 20 }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: sideColor, fontFamily: "Rajdhani", letterSpacing: "0.08em" }}>EDIT MODE</h3>
-              <div style={{ fontSize: 13, color: "#999", fontFamily: "Barlow Condensed", lineHeight: 1.8 }}>
+              <div style={{ fontSize: 16, color: "#999", fontFamily: "Barlow Condensed", lineHeight: 1.8 }}>
                 <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>1.</strong> Pick utility & side</p>
                 <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>2.</strong> Click/tap map for <strong style={{ color: "#ccc" }}>landing spot</strong></p>
                 <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>3.</strong> Click/tap for <strong style={{ color: "#ccc" }}>throw origins</strong> (multiple!)</p>
                 <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>4.</strong> Hit <strong style={{ color: sideColor }}>DONE</strong> then start a new lineup</p>
-                <p style={{ margin: "0 0 16px", fontSize: 11, color: "#777" }}>Press and drag dots on mobile to reposition them.</p>
+                <p style={{ margin: "0 0 16px", fontSize: 17, color: "#888" }}>Press and drag dots on mobile to reposition them.</p>
               </div>
               <div style={{ padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6 }}>
-                <div style={{ fontSize: 11, color: "#777", fontFamily: "Barlow Condensed", letterSpacing: "0.1em", marginBottom: 6 }}>PLACED</div>
+                <div style={{ fontSize: 17, color: "#888", fontFamily: "Barlow Condensed", letterSpacing: "0.1em", marginBottom: 6 }}>PLACED</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: "#f0f0f0" }}>{editDots.length} lineup{editDots.length !== 1 ? "s" : ""}</div>
-                <div style={{ fontSize: 11, color: "#777", marginTop: 2 }}>{editDots.filter(d=>d.side==="ct").length} CT · {editDots.filter(d=>d.side==="t").length} T · {editDots.reduce((s,d) => s + d.origins.length, 0)} total origins</div>
+                <div style={{ fontSize: 17, color: "#888", marginTop: 2 }}>{editDots.filter(d=>d.side==="ct").length} CT · {editDots.filter(d=>d.side==="t").length} T · {editDots.reduce((s,d) => s + d.origins.length, 0)} total origins</div>
               </div>
             </div>
           ) : !selectedSpot ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 300, color: "#777", textAlign: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: 300, color: "#888", textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>{utilMeta.icon}</div>
-              <div style={{ fontSize: 14, fontFamily: "Barlow Condensed", letterSpacing: "0.12em", textTransform: "uppercase" }}>Select a {activeUtil} on the map</div>
+              <div style={{ fontSize: 17, fontFamily: "Barlow Condensed", letterSpacing: "0.12em", textTransform: "uppercase" }}>Select a {activeUtil} on the map</div>
             </div>
           ) : (
             <div>
@@ -687,10 +798,10 @@ export default function CS2Lineups() {
                 <span style={{ fontSize: 22 }}>{utilMeta.icon}</span>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f0f0f0" }}>{selectedSpot.name}</h2>
-                  <div style={{ fontSize: 11, color: utilMeta.color, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "Barlow Condensed" }}>{map.name} • {selectedSpot.site} Site</div>
+                  <div style={{ fontSize: 17, color: utilMeta.color, fontWeight: 600, letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "Barlow Condensed" }}>{map.name} • {selectedSpot.site} Site</div>
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: "#777", marginBottom: 10, fontFamily: "Barlow Condensed", letterSpacing: "0.1em", textTransform: "uppercase" }}>THROW FROM ({selectedSpot.origins.length})</div>
+              <div style={{ fontSize: 17, color: "#888", marginBottom: 10, fontFamily: "Barlow Condensed", letterSpacing: "0.1em", textTransform: "uppercase" }}>THROW FROM ({selectedSpot.origins.length})</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {selectedSpot.origins.map((origin, i) => (
                   <div key={i} onClick={() => handleOriginClick(origin, i)} style={{
@@ -700,17 +811,17 @@ export default function CS2Lineups() {
                     borderRadius: 8, cursor: "pointer", transition: "all 0.2s",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: selectedOrigin === i ? 12 : 0 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: selectedOrigin === i ? utilMeta.color : "rgba(255,255,255,0.08)", color: selectedOrigin === i ? "#000" : "#888", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
-                      <span style={{ fontSize: 15, fontWeight: 600, color: selectedOrigin === i ? "#f0f0f0" : "#999" }}>{origin.label}</span>
-                      <span style={{ marginLeft: "auto", fontSize: 10, color: "#777", transform: selectedOrigin === i ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: selectedOrigin === i ? utilMeta.color : "rgba(255,255,255,0.08)", color: selectedOrigin === i ? "#000" : "#888", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+                      <span style={{ fontSize: 18, fontWeight: 600, color: selectedOrigin === i ? "#f0f0f0" : "#999" }}>{origin.label}</span>
+                      <span style={{ marginLeft: "auto", fontSize: 13, color: "#888", transform: selectedOrigin === i ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
                     </div>
                     {selectedOrigin === i && (
                       <div style={{ paddingLeft: 32 }}>
-                        <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.6, color: "#bbb", fontFamily: "Barlow Condensed", fontWeight: 400 }}>{origin.steps}</p>
+                        <p style={{ margin: "0 0 12px", fontSize: 16, lineHeight: 1.6, color: "#bbb", fontFamily: "Barlow Condensed", fontWeight: 400 }}>{origin.steps}</p>
                         {origin.videoUrl ? (
-                          <a href={origin.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", background: `${utilMeta.color}15`, border: `1px solid ${utilMeta.color}30`, borderRadius: 5, color: utilMeta.color, fontSize: 12, fontWeight: 600, textDecoration: "none", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>▶ WATCH CLIP</a>
+                          <a href={origin.videoUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", background: `${utilMeta.color}15`, border: `1px solid ${utilMeta.color}30`, borderRadius: 5, color: utilMeta.color, fontSize: 18, fontWeight: 600, textDecoration: "none", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>▶ WATCH CLIP</a>
                         ) : (
-                          <div style={{ padding: "8px 12px", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 5, fontSize: 11, color: "#777", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>📹 Add a clip URL to the videoUrl field</div>
+                          <div style={{ padding: "8px 12px", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 5, fontSize: 17, color: "#888", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>📹 Add a clip URL to the videoUrl field</div>
                         )}
                       </div>
                     )}
@@ -723,8 +834,8 @@ export default function CS2Lineups() {
       </div>
 
       <div style={{ padding: "14px 20px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 10, color: "#555", fontFamily: "Barlow Condensed", letterSpacing: "0.15em" }}>{filtered.length + editFiltered.length} {activeUtil}{filtered.length + editFiltered.length !== 1 ? "s" : ""} on {map.name}</span>
-        <span style={{ fontSize: 10, color: "#2a2a2a", fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>{editMode ? `${editSide.toUpperCase()} side • ${editStep === "place_origin" ? "adding origins" : "click to place"}` : "Click EDIT to place lineups"}</span>
+        <span style={{ fontSize: 16, color: "#666", fontFamily: "Barlow Condensed", letterSpacing: "0.15em" }}>{filtered.length + editFiltered.length} {activeUtil}{filtered.length + editFiltered.length !== 1 ? "s" : ""} on {map.name}</span>
+        <span style={{ fontSize: 16, color: "#2a2a2a", fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>{editMode ? `${editSide.toUpperCase()} side • ${editStep === "place_origin" ? "adding origins" : "click to place"}` : "Click EDIT to place lineups"}</span>
       </div>
     </div>
   );
