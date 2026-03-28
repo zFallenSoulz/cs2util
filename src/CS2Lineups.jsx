@@ -3,26 +3,46 @@ const DUST2_RADAR = "data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX
 import { useState, useCallback, useMemo } from "react";
 
 const MAPS = {
-  mirage: {
-    name: "Mirage", color: "#e8a735",
-    lineups: []
-  },
-  dust2: {
-    name: "Dust 2", color: "#c4913a",
-    lineups: []
-  },
-  inferno: {
-    name: "Inferno", color: "#8b5e3c",
+  ancient: {
+    name: "Ancient", color: "#ffadad",
     lineups: []
   },
   anubis: {
-    name: "Anubis", color: "#4a7a8c",
+    name: "Anubis", color: "#ffd6a5",
+    lineups: []
+  },
+  dust2: {
+    name: "Dust II", color: "#fdffb6",
+    lineups: []
+  },
+  inferno: {
+    name: "Inferno", color: "#caffbf",
+    lineups: []
+  },
+  mirage: {
+    name: "Mirage", color: "#9bf6ff",
+    lineups: []
+  },
+  nuke: {
+    name: "Nuke", color: "#a0c4ff",
+    lineups: []
+  },
+  overpass: {
+    name: "Overpass", color: "#bdb2ff",
+    lineups: []
+  },
+  train: {
+    name: "Train", color: "#e8b5ff",
+    lineups: []
+  },
+  vertigo: {
+    name: "Vertigo", color: "#ffc2f1",
     lineups: []
   },
 };
 
 const UTIL_TYPES = [
-  { key: "smoke", label: "Smokes", icon: "💨", color: "#8ab4f8" },
+  { key: "smoke", label: "Smokes", icon: "☁️", color: "#8ab4f8" },
   { key: "molotov", label: "Molotovs", icon: "🔥", color: "#f28b44" },
   { key: "flash", label: "Flashes", icon: "⚡", color: "#f7e44d" },
   { key: "grenade", label: "Grenades", icon: "💥", color: "#e05555" },
@@ -75,8 +95,14 @@ const MAP_OUTLINES = {
 };
 
 export default function CS2Lineups() {
-  const [activeMap, setActiveMap] = useState("dust2");
-  const [activeUtil, setActiveUtil] = useState("smoke");
+  // Load persisted state from localStorage
+  const load = (key, fallback) => {
+    try { const v = localStorage.getItem(`cs2util_${key}`); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  };
+  const save = (key, val) => { try { localStorage.setItem(`cs2util_${key}`, JSON.stringify(val)); } catch {} };
+
+  const [activeMap, setActiveMap] = useState(() => load("activeMap", "dust2"));
+  const [activeUtil, setActiveUtil] = useState(() => load("activeUtil", "smoke"));
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [selectedOrigin, setSelectedOrigin] = useState(null);
   const [hoveredSpot, setHoveredSpot] = useState(null);
@@ -84,16 +110,24 @@ export default function CS2Lineups() {
   // Edit mode
   const [editMode, setEditMode] = useState(false);
   const [editSide, setEditSide] = useState("ct");
-  // editDots: [{id, landX, landY, origins: [{x, y}], side, type, name}]
-  const [editDots, setEditDots] = useState([]);
-  const [editStep, setEditStep] = useState(null); // "place_landing" | "place_origin"
-  const [pendingLanding, setPendingLanding] = useState(null);
-  const [activeEditId, setActiveEditId] = useState(null); // which edit dot is being built / viewed
+  const [editDots, setEditDots] = useState(() => load("editDots", []));
+  const [editStep, setEditStep] = useState(null);
+  const [activeEditId, setActiveEditId] = useState(null);
   const [selectedEditOrigin, setSelectedEditOrigin] = useState(null);
   const [editName, setEditName] = useState("");
-  const [hiddenIds, setHiddenIds] = useState([]);
-  const [mapOrder, setMapOrder] = useState(Object.keys(MAPS));
-  const [dragTab, setDragTab] = useState(null);
+  const [hiddenIds, setHiddenIds] = useState(() => load("hiddenIds", []));
+  const [mapOrder, setMapOrder] = useState(() => load("mapOrder", Object.keys(MAPS)));
+  const [hiddenMaps, setHiddenMaps] = useState(() => load("hiddenMaps", []));
+  const [showMapMenu, setShowMapMenu] = useState(false);
+
+  // Touch drag state
+  const [dragging, setDragging] = useState(null); // { dotId, target: "land" | "origin", originIdx? }
+
+  // Persist on change
+  const updateEditDots = (updater) => { setEditDots(prev => { const next = typeof updater === "function" ? updater(prev) : updater; save("editDots", next); return next; }); };
+  const updateHiddenIds = (updater) => { setHiddenIds(prev => { const next = typeof updater === "function" ? updater(prev) : updater; save("hiddenIds", next); return next; }); };
+  const updateMapOrder = (updater) => { setMapOrder(prev => { const next = typeof updater === "function" ? updater(prev) : updater; save("mapOrder", next); return next; }); };
+  const updateHiddenMaps = (updater) => { setHiddenMaps(prev => { const next = typeof updater === "function" ? updater(prev) : updater; save("hiddenMaps", next); return next; }); };
 
   const CT_COLOR = "#5b8dd9";
   const T_COLOR = "#d4a84b";
@@ -103,6 +137,7 @@ export default function CS2Lineups() {
   const utilMeta = UTIL_TYPES.find(u => u.key === activeUtil);
   const filtered = useMemo(() => map.lineups.filter(l => l.type === activeUtil && !hiddenIds.includes(l.id)), [map, activeUtil, hiddenIds]);
   const editFiltered = editDots.filter(d => d.type === activeUtil);
+  const visibleMaps = mapOrder.filter(k => MAPS[k] && !hiddenMaps.includes(k));
 
   const handleSpotClick = useCallback((lineup) => {
     if (editMode) return;
@@ -120,39 +155,72 @@ export default function CS2Lineups() {
     else { setActiveEditId(id); setSelectedEditOrigin(null); setSelectedSpot(null); setSelectedOrigin(null); }
   };
 
-  const handleSvgClick = useCallback((e) => {
-    if (!editMode) return;
-    const svg = e.currentTarget;
+  const getSvgCoords = (e, svg) => {
     const pt = svg.createSVGPoint();
-    pt.x = e.clientX; pt.y = e.clientY;
+    const touch = e.touches ? e.touches[0] : e;
+    pt.x = touch.clientX; pt.y = touch.clientY;
     const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-    const x = Math.round(svgP.x * 10) / 10;
-    const y = Math.round(svgP.y * 10) / 10;
+    return { x: Math.round(svgP.x * 10) / 10, y: Math.round(svgP.y * 10) / 10 };
+  };
+
+  const handleSvgClick = useCallback((e) => {
+    if (!editMode || dragging) return;
+    const svg = e.currentTarget;
+    const { x, y } = getSvgCoords(e, svg);
 
     if (editStep === "place_landing") {
-      // Place a new landing dot
       const newId = `edit_${Date.now()}`;
-      const newDot = {
-        id: newId, landX: x, landY: y,
-        origins: [],
-        side: editSide, type: activeUtil,
-        name: editName || `${utilMeta.label.slice(0,-1)} ${editDots.length + 1}`,
-      };
-      setEditDots(prev => [...prev, newDot]);
+      const newDot = { id: newId, landX: x, landY: y, origins: [], side: editSide, type: activeUtil, name: editName || `${utilMeta.label.slice(0,-1)} ${editDots.length + 1}` };
+      updateEditDots(prev => [...prev, newDot]);
       setActiveEditId(newId);
       setEditStep("place_origin");
       setEditName("");
     } else if (editStep === "place_origin" && activeEditId) {
-      // Add an origin to the active edit dot
-      setEditDots(prev => prev.map(d =>
+      updateEditDots(prev => prev.map(d =>
         d.id === activeEditId ? { ...d, origins: [...d.origins, { x, y, label: `Origin ${d.origins.length + 1}` }] } : d
       ));
     }
-  }, [editMode, editStep, activeEditId, editSide, activeUtil, utilMeta, editDots.length, editName]);
+  }, [editMode, editStep, activeEditId, editSide, activeUtil, utilMeta, editDots.length, editName, dragging]);
+
+  // Touch drag handlers
+  const handleTouchStart = (e, dotId, target, originIdx) => {
+    if (!editMode) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setDragging({ dotId, target, originIdx });
+  };
+
+  const handleTouchMove = useCallback((e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    const svg = document.querySelector('#lineup-svg');
+    if (!svg) return;
+    const { x, y } = getSvgCoords(e, svg);
+    updateEditDots(prev => prev.map(d => {
+      if (d.id !== dragging.dotId) return d;
+      if (dragging.target === "land") return { ...d, landX: x, landY: y };
+      if (dragging.target === "origin" && dragging.originIdx != null) {
+        return { ...d, origins: d.origins.map((o, i) => i === dragging.originIdx ? { ...o, x, y } : o) };
+      }
+      return d;
+    }));
+  }, [dragging]);
+
+  const handleTouchEnd = useCallback(() => { setDragging(null); }, []);
+
+  // Attach touch listeners to window for drag
+  useMemo(() => {
+    if (typeof window === 'undefined') return;
+    if (dragging) {
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+      return () => { window.removeEventListener('touchmove', handleTouchMove); window.removeEventListener('touchend', handleTouchEnd); };
+    }
+  }, [dragging, handleTouchMove, handleTouchEnd]);
 
   const toggleEditMode = () => {
     if (editMode) {
-      setEditMode(false); setEditStep(null); setPendingLanding(null); setActiveEditId(null); setSelectedEditOrigin(null);
+      setEditMode(false); setEditStep(null); setActiveEditId(null); setSelectedEditOrigin(null);
     } else {
       setEditMode(true); setEditStep("place_landing"); setSelectedSpot(null); setSelectedOrigin(null);
     }
@@ -162,31 +230,32 @@ export default function CS2Lineups() {
     setEditStep("place_landing"); setActiveEditId(null); setSelectedEditOrigin(null);
   };
 
-  const deleteEditDot = (id) => {
-    setEditDots(prev => prev.filter(d => d.id !== id));
-    if (activeEditId === id) { setActiveEditId(null); setSelectedEditOrigin(null); }
+  const deleteEditDot = (id) => { updateEditDots(prev => prev.filter(d => d.id !== id)); if (activeEditId === id) { setActiveEditId(null); setSelectedEditOrigin(null); } };
+  const deleteEditOrigin = (dotId, idx) => { updateEditDots(prev => prev.map(d => d.id === dotId ? { ...d, origins: d.origins.filter((_, i) => i !== idx) } : d)); setSelectedEditOrigin(null); };
+  const renameEditDot = (id, name) => { updateEditDots(prev => prev.map(d => d.id === id ? { ...d, name } : d)); };
+  const renameEditOrigin = (dotId, idx, label) => { updateEditDots(prev => prev.map(d => d.id === dotId ? { ...d, origins: d.origins.map((o, i) => i === idx ? { ...o, label } : o) } : d)); };
+  const changeDotSide = (id, side) => { updateEditDots(prev => prev.map(d => d.id === id ? { ...d, side } : d)); };
+  const isEditDotActive = (id) => activeEditId === id;
+
+  // Map management
+  const moveMap = (key, dir) => {
+    updateMapOrder(prev => {
+      const idx = prev.indexOf(key);
+      if (idx < 0) return prev;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      return next;
+    });
+  };
+  const toggleMapVisibility = (key) => {
+    updateHiddenMaps(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
   };
 
-  const deleteEditOrigin = (dotId, originIdx) => {
-    setEditDots(prev => prev.map(d =>
-      d.id === dotId ? { ...d, origins: d.origins.filter((_, i) => i !== originIdx) } : d
-    ));
-    setSelectedEditOrigin(null);
-  };
-
-  const renameEditDot = (id, newName) => {
-    setEditDots(prev => prev.map(d => d.id === id ? { ...d, name: newName } : d));
-  };
-
-  const renameEditOrigin = (dotId, originIdx, newLabel) => {
-    setEditDots(prev => prev.map(d =>
-      d.id === dotId ? { ...d, origins: d.origins.map((o, i) => i === originIdx ? { ...o, label: newLabel } : o) } : d
-    ));
-  };
-
-  const changeDotSide = (id, side) => {
-    setEditDots(prev => prev.map(d => d.id === id ? { ...d, side } : d));
-  };
+  // Persist activeMap/activeUtil
+  const setActiveMapP = (k) => { setActiveMap(k); save("activeMap", k); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); setSelectedEditOrigin(null); if (editMode) setEditStep("place_landing"); };
+  const setActiveUtilP = (k) => { setActiveUtil(k); save("activeUtil", k); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); };
 
   const btnStyle = (active, color) => ({
     padding: "6px 14px", fontSize: 12, fontWeight: 600, fontFamily: "Barlow Condensed",
@@ -197,10 +266,8 @@ export default function CS2Lineups() {
     borderRadius: 6,
   });
 
-  const isEditDotActive = (id) => activeEditId === id;
-
   return (
-    <div style={{ fontFamily: "'Rajdhani', 'Barlow Condensed', sans-serif", background: "#0c0e12", color: "#d4d4d8", minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Rajdhani', 'Barlow Condensed', sans-serif", background: "#0c0e12", color: "#d4d4d8", minHeight: "100vh", position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
       {/* Header */}
@@ -216,47 +283,67 @@ export default function CS2Lineups() {
             border: `1px solid ${editMode ? "#4ade8050" : "rgba(255,255,255,0.08)"}`,
           }}>{editMode ? "✓ SAVE CHANGES" : "✎ EDIT"}</button>
         </div>
-        <div style={{ display: "flex", gap: 2, overflowX: "auto" }}>
-          {mapOrder.filter(k => MAPS[k]).map((key) => {
+        <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+          {visibleMaps.map(key => {
             const m = MAPS[key];
             return (
-              <button key={key}
-                draggable
-                onDragStart={() => setDragTab(key)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  if (dragTab && dragTab !== key) {
-                    setMapOrder(prev => {
-                      const next = prev.filter(k => k !== dragTab);
-                      const targetIdx = next.indexOf(key);
-                      next.splice(targetIdx, 0, dragTab);
-                      return next;
-                    });
-                  }
-                  setDragTab(null);
-                }}
-                onDragEnd={() => setDragTab(null)}
-                onClick={() => { setActiveMap(key); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); setSelectedEditOrigin(null); if (editMode) setEditStep("place_landing"); }}
-                style={{
-                  padding: "8px 18px", fontSize: 13, fontWeight: activeMap === key ? 700 : 500, fontFamily: "Rajdhani",
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  background: activeMap === key ? "rgba(255,255,255,0.08)" : dragTab === key ? "rgba(255,255,255,0.04)" : "transparent",
-                  color: activeMap === key ? m.color : "#666", border: "none",
-                  borderBottom: activeMap === key ? `2px solid ${m.color}` : "2px solid transparent",
-                  cursor: "grab", transition: "all 0.2s", borderRadius: "4px 4px 0 0",
-                  opacity: dragTab === key ? 0.5 : 1,
-                }}>{m.name}</button>
+              <button key={key} onClick={() => setActiveMapP(key)} style={{
+                padding: "8px 18px", fontSize: 13, fontWeight: activeMap === key ? 700 : 500, fontFamily: "Rajdhani",
+                letterSpacing: "0.1em", textTransform: "uppercase",
+                background: activeMap === key ? "rgba(255,255,255,0.08)" : "transparent",
+                color: activeMap === key ? m.color : "#666", border: "none",
+                borderBottom: activeMap === key ? `2px solid ${m.color}` : "2px solid transparent",
+                cursor: "pointer", transition: "all 0.2s", borderRadius: "4px 4px 0 0",
+              }}>{m.name}</button>
             );
           })}
+          <button onClick={() => setShowMapMenu(true)} style={{
+            padding: "6px 10px", fontSize: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+            color: "#555", cursor: "pointer", borderRadius: 4, marginLeft: 4, fontFamily: "Barlow Condensed",
+          }} title="Manage maps">⚙</button>
         </div>
       </div>
+
+      {/* Map management modal */}
+      {showMapMenu && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setShowMapMenu(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#1a1c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 20, width: "100%", maxWidth: 340 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f0f0f0", fontFamily: "Rajdhani", letterSpacing: "0.1em" }}>MANAGE MAPS</h3>
+              <button onClick={() => setShowMapMenu(false)} style={{ background: "none", border: "none", color: "#666", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {mapOrder.filter(k => MAPS[k]).map((key, idx) => {
+                const m = MAPS[key];
+                const isHidden = hiddenMaps.includes(key);
+                return (
+                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: isHidden ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.04)", border: `1px solid ${isHidden ? "rgba(255,255,255,0.04)" : `${m.color}30`}`, borderRadius: 6, opacity: isHidden ? 0.5 : 1 }}>
+                    <button onClick={() => moveMap(key, -1)} disabled={idx === 0}
+                      style={{ padding: "2px 6px", fontSize: 14, background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: idx === 0 ? "#333" : "#888", cursor: idx === 0 ? "default" : "pointer" }}>↑</button>
+                    <button onClick={() => moveMap(key, 1)} disabled={idx === mapOrder.length - 1}
+                      style={{ padding: "2px 6px", fontSize: 14, background: "none", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: idx === mapOrder.length - 1 ? "#333" : "#888", cursor: idx === mapOrder.length - 1 ? "default" : "pointer" }}>↓</button>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: isHidden ? "#555" : m.color, fontFamily: "Rajdhani", letterSpacing: "0.08em", flex: 1 }}>{m.name}</span>
+                    <button onClick={() => toggleMapVisibility(key)} style={{
+                      padding: "3px 10px", fontSize: 11, fontFamily: "Barlow Condensed", fontWeight: 600, borderRadius: 4, cursor: "pointer",
+                      background: isHidden ? "rgba(255,255,255,0.03)" : `${m.color}20`,
+                      color: isHidden ? "#555" : m.color,
+                      border: `1px solid ${isHidden ? "rgba(255,255,255,0.06)" : `${m.color}40`}`,
+                    }}>{isHidden ? "SHOW" : "HIDE"}</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Utility filter + side selector */}
       <div style={{ display: "flex", gap: 4, padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", flexWrap: "wrap", alignItems: "center" }}>
         {UTIL_TYPES.map(u => {
           const count = map.lineups.filter(l => l.type === u.key && !hiddenIds.includes(l.id)).length + editDots.filter(d => d.type === u.key).length;
           return (
-            <button key={u.key} onClick={() => { setActiveUtil(u.key); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); }} style={{
+            <button key={u.key} onClick={() => setActiveUtilP(u.key)} style={{
               ...btnStyle(activeUtil === u.key, u.color), display: "flex", alignItems: "center", gap: 6,
             }}>
               <span>{u.icon}</span><span>{u.label}</span>
@@ -295,15 +382,13 @@ export default function CS2Lineups() {
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 360px", padding: 20, minWidth: 300 }}>
           <div style={{ position: "relative", background: "rgba(255,255,255,0.02)", border: `1px solid ${editMode ? `${sideColor}30` : "rgba(255,255,255,0.06)"}`, borderRadius: 10, overflow: "hidden", aspectRatio: "1", maxWidth: 480, cursor: editMode ? "crosshair" : "default" }}>
-            <svg viewBox="0 0 100 100" onClick={handleSvgClick} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", color: map.color }}>
+            <svg id="lineup-svg" viewBox="0 0 100 100" onClick={handleSvgClick} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", color: map.color, touchAction: "none" }}>
               {MAP_OUTLINES[activeMap]}
 
-              {/* Hardcoded lines (only when selected) */}
+              {/* Hardcoded lines */}
               {!editMode && selectedSpot?.origins.map((o, i) => (
                 <g key={i}>
-                  <line x1={o.x} y1={o.y} x2={selectedSpot.mapX} y2={selectedSpot.mapY}
-                    stroke={selectedOrigin === i ? utilMeta.color : `${utilMeta.color}60`}
-                    strokeWidth={selectedOrigin === i ? 1.2 : 0.6} strokeDasharray={selectedOrigin === i ? "none" : "2 2"} />
+                  <line x1={o.x} y1={o.y} x2={selectedSpot.mapX} y2={selectedSpot.mapY} stroke={selectedOrigin === i ? utilMeta.color : `${utilMeta.color}60`} strokeWidth={selectedOrigin === i ? 1.2 : 0.6} strokeDasharray={selectedOrigin === i ? "none" : "2 2"} />
                   <circle cx={selectedSpot.mapX} cy={selectedSpot.mapY} r="1.5" fill={utilMeta.color} opacity="0.7" />
                 </g>
               ))}
@@ -325,7 +410,7 @@ export default function CS2Lineups() {
                 );
               })}
 
-              {/* Hardcoded origin dots (only when selected) */}
+              {/* Hardcoded origin dots */}
               {!editMode && selectedSpot?.origins.map((o, i) => (
                 <g key={`o-${i}`} onClick={(e) => { e.stopPropagation(); handleOriginClick(o, i); }} style={{ cursor: "pointer" }}>
                   <circle cx={o.x} cy={o.y} r="2.4" fill={selectedOrigin === i ? "#fff" : `${utilMeta.color}90`} stroke={selectedOrigin === i ? utilMeta.color : "rgba(0,0,0,0.4)"} strokeWidth="0.6" />
@@ -335,18 +420,19 @@ export default function CS2Lineups() {
                 </g>
               ))}
 
-              {/* ── Edit dots ── */}
+              {/* Edit dots */}
               {editFiltered.map(dot => {
                 const c = dot.side === "ct" ? CT_COLOR : T_COLOR;
                 const isActive = isEditDotActive(dot.id);
                 return (
                   <g key={dot.id}>
-                    {/* Landing dot - always visible, clickable */}
-                    <g onClick={(e) => { e.stopPropagation(); toggleEditDot(dot.id); }} style={{ cursor: "pointer" }}>
+                    {/* Landing dot */}
+                    <g onClick={(e) => { e.stopPropagation(); toggleEditDot(dot.id); }}
+                      onTouchStart={editMode ? (e) => handleTouchStart(e, dot.id, "land") : undefined}
+                      style={{ cursor: editMode ? "grab" : "pointer" }}>
                       {isActive && <circle cx={dot.landX} cy={dot.landY} r="5" fill="none" stroke={c} strokeWidth="0.5" opacity="0.5"><animate attributeName="r" from="3" to="8" dur="1.5s" repeatCount="indefinite" /><animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite" /></circle>}
                       <circle cx={dot.landX} cy={dot.landY} r={isActive ? 4 : 3} fill={`${c}30`} />
                       <circle cx={dot.landX} cy={dot.landY} r={isActive ? 2.5 : 2} fill={c} stroke={isActive ? "#fff" : "rgba(0,0,0,0.5)"} strokeWidth={isActive ? 0.5 : 0.3} />
-                      {/* Label + side badge only when active */}
                       {isActive && <>
                         <rect x={dot.landX + 3} y={dot.landY - 4.5} width={Math.max(dot.name.length * 2.2 + 4, 12)} height="6.5" rx="1.2" fill="rgba(0,0,0,0.88)" stroke={`${c}80`} strokeWidth="0.3" />
                         <text x={dot.landX + 5} y={dot.landY + 0.2} fontSize="3" fill={c} fontFamily="Barlow Condensed" fontWeight="500">{dot.name}</text>
@@ -354,14 +440,15 @@ export default function CS2Lineups() {
                         <text x={dot.landX + 6} y={dot.landY + 5.2} fontSize="2.2" fill="#000" textAnchor="middle" fontWeight="700">{dot.side.toUpperCase()}</text>
                       </>}
                     </g>
-                    {/* Lines + origin dots only when active/selected */}
+                    {/* Origin lines + dots only when active */}
                     {isActive && dot.origins.map((o, i) => {
                       const oSel = selectedEditOrigin === i;
                       return (
                         <g key={i}>
-                          <line x1={o.x} y1={o.y} x2={dot.landX} y2={dot.landY}
-                            stroke={c} strokeWidth={oSel ? 1.2 : 0.7} strokeDasharray={oSel ? "none" : "2 1.5"} opacity={oSel ? 0.9 : 0.6} />
-                          <g onClick={(e) => { e.stopPropagation(); setSelectedEditOrigin(prev => prev === i ? null : i); }} style={{ cursor: "pointer" }}>
+                          <line x1={o.x} y1={o.y} x2={dot.landX} y2={dot.landY} stroke={c} strokeWidth={oSel ? 1.2 : 0.7} strokeDasharray={oSel ? "none" : "2 1.5"} opacity={oSel ? 0.9 : 0.6} />
+                          <g onClick={(e) => { e.stopPropagation(); setSelectedEditOrigin(prev => prev === i ? null : i); }}
+                            onTouchStart={editMode ? (e) => handleTouchStart(e, dot.id, "origin", i) : undefined}
+                            style={{ cursor: editMode ? "grab" : "pointer" }}>
                             <circle cx={o.x} cy={o.y} r={oSel ? 2.8 : 2.2} fill={oSel ? "#fff" : `${c}80`} stroke={oSel ? c : "rgba(0,0,0,0.4)"} strokeWidth="0.5" />
                             <text x={o.x} y={o.y + 0.9} fontSize="2.5" fill={oSel ? c : "#000"} textAnchor="middle" fontWeight="700">{i + 1}</text>
                           </g>
@@ -372,7 +459,7 @@ export default function CS2Lineups() {
                 );
               })}
 
-              {/* Currently placing origin indicator */}
+              {/* Placing indicator */}
               {editMode && editStep === "place_origin" && activeEditId && (() => {
                 const dot = editDots.find(d => d.id === activeEditId);
                 if (!dot) return null;
@@ -389,23 +476,18 @@ export default function CS2Lineups() {
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {/* Hardcoded lineups */}
               {!editMode && filtered.map(lineup => (
-                <div key={lineup.id} style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-                  background: selectedSpot?.id === lineup.id ? `${utilMeta.color}12` : "rgba(255,255,255,0.02)",
-                  border: `1px solid ${selectedSpot?.id === lineup.id ? `${utilMeta.color}30` : "rgba(255,255,255,0.04)"}`,
-                  borderRadius: 6, cursor: "pointer", color: "#d4d4d8", fontFamily: "Barlow Condensed",
-                }}>
+                <div key={lineup.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: selectedSpot?.id === lineup.id ? `${utilMeta.color}12` : "rgba(255,255,255,0.02)", border: `1px solid ${selectedSpot?.id === lineup.id ? `${utilMeta.color}30` : "rgba(255,255,255,0.04)"}`, borderRadius: 6, cursor: "pointer", color: "#d4d4d8", fontFamily: "Barlow Condensed" }}>
                   <div onClick={() => handleSpotClick(lineup)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 10, fontWeight: 600, color: utilMeta.color, opacity: 0.7, background: `${utilMeta.color}15`, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.1em", flexShrink: 0 }}>{lineup.site}</span>
                     <span style={{ fontSize: 14, fontWeight: 500 }}>{lineup.name}</span>
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#555", flexShrink: 0 }}>{lineup.origins.length} origin{lineup.origins.length !== 1 ? "s" : ""}</span>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); setHiddenIds(prev => [...prev, lineup.id]); if (selectedSpot?.id === lineup.id) { setSelectedSpot(null); setSelectedOrigin(null); } }}
+                  <button onClick={(e) => { e.stopPropagation(); updateHiddenIds(prev => [...prev, lineup.id]); if (selectedSpot?.id === lineup.id) { setSelectedSpot(null); setSelectedOrigin(null); } }}
                     style={{ padding: "3px 6px", fontSize: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, color: "#555", cursor: "pointer", fontFamily: "Barlow Condensed", flexShrink: 0 }} title="Remove">✕</button>
                 </div>
               ))}
 
-              {/* Edit dots (both modes) */}
+              {/* Edit dots */}
               {editFiltered.map(dot => {
                 const c = dot.side === "ct" ? CT_COLOR : T_COLOR;
                 const isActive = isEditDotActive(dot.id);
@@ -429,7 +511,6 @@ export default function CS2Lineups() {
                           <button onClick={(e) => { e.stopPropagation(); changeDotSide(dot.id, "ct"); }} style={{ padding: "3px 12px", fontSize: 11, fontWeight: 700, fontFamily: "Barlow Condensed", borderRadius: 4, cursor: "pointer", background: dot.side === "ct" ? `${CT_COLOR}30` : "rgba(255,255,255,0.03)", color: dot.side === "ct" ? CT_COLOR : "#555", border: `1px solid ${dot.side === "ct" ? `${CT_COLOR}50` : "rgba(255,255,255,0.06)"}` }}>CT</button>
                           <button onClick={(e) => { e.stopPropagation(); changeDotSide(dot.id, "t"); }} style={{ padding: "3px 12px", fontSize: 11, fontWeight: 700, fontFamily: "Barlow Condensed", borderRadius: 4, cursor: "pointer", background: dot.side === "t" ? `${T_COLOR}30` : "rgba(255,255,255,0.03)", color: dot.side === "t" ? T_COLOR : "#555", border: `1px solid ${dot.side === "t" ? `${T_COLOR}50` : "rgba(255,255,255,0.06)"}` }}>T</button>
                         </div>}
-                        {/* Origins list */}
                         {dot.origins.length > 0 && <div style={{ fontSize: 11, color: "#555", fontFamily: "Barlow Condensed", letterSpacing: "0.08em" }}>THROW FROM:</div>}
                         {dot.origins.map((o, i) => (
                           <div key={i} onClick={(e) => { e.stopPropagation(); setSelectedEditOrigin(prev => prev === i ? null : i); }} style={{
@@ -474,10 +555,10 @@ export default function CS2Lineups() {
               <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: sideColor, fontFamily: "Rajdhani", letterSpacing: "0.08em" }}>EDIT MODE</h3>
               <div style={{ fontSize: 13, color: "#999", fontFamily: "Barlow Condensed", lineHeight: 1.8 }}>
                 <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>1.</strong> Pick utility & side</p>
-                <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>2.</strong> Click map for <strong style={{ color: "#ccc" }}>landing spot</strong></p>
-                <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>3.</strong> Click map for <strong style={{ color: "#ccc" }}>throw origins</strong> (multiple!)</p>
-                <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>4.</strong> Hit <strong style={{ color: sideColor }}>DONE</strong> to start a new lineup</p>
-                <p style={{ margin: "0 0 16px", fontSize: 11, color: "#555" }}>Or expand a dot in the list and click "+ ADD ORIGIN" to add more throws.</p>
+                <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>2.</strong> Click/tap map for <strong style={{ color: "#ccc" }}>landing spot</strong></p>
+                <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>3.</strong> Click/tap for <strong style={{ color: "#ccc" }}>throw origins</strong> (multiple!)</p>
+                <p style={{ margin: "0 0 8px" }}><strong style={{ color: "#ccc" }}>4.</strong> Hit <strong style={{ color: sideColor }}>DONE</strong> then start a new lineup</p>
+                <p style={{ margin: "0 0 16px", fontSize: 11, color: "#555" }}>Press and drag dots on mobile to reposition them.</p>
               </div>
               <div style={{ padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 6 }}>
                 <div style={{ fontSize: 11, color: "#555", fontFamily: "Barlow Condensed", letterSpacing: "0.1em", marginBottom: 6 }}>PLACED</div>
