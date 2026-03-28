@@ -718,3 +718,4 @@ export default function CS2Lineups() {
     </div>
   );
 }
+
