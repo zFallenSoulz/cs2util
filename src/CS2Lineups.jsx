@@ -422,7 +422,7 @@ export default function CS2Lineups() {
   }, [mapSize]);
 
   const btnStyle = (active, color) => ({
-    padding: "6px 14px", fontSize: 18, fontWeight: 600, fontFamily: "Barlow Condensed",
+    padding: "6px 14px", fontSize: 16, fontWeight: 600, fontFamily: "Barlow Condensed",
     letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
     background: active ? `${color}25` : "rgba(255,255,255,0.03)",
     color: active ? color : "#888",
@@ -581,17 +581,19 @@ export default function CS2Lineups() {
                   ...btnStyle(activeUtil === u.key, u.color), display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "8px 6px",
                 }}>
                   <span>{u.icon}</span><span>{u.label}</span>
-                  <span style={{ fontSize: 13, opacity: 0.6, background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 3 }}>{count}</span>
+                  <span style={{ fontSize: 11, opacity: 0.6, background: "rgba(255,255,255,0.06)", padding: "1px 5px", borderRadius: 3 }}>{count}</span>
                 </button>
               );
             })}
           </div>
-          {editMode && (
-            <div style={{ width: "100%", maxWidth: mapSize, display: "flex", gap: 4, marginBottom: 8 }}>
-              <button onClick={() => setEditSide("ct")} style={{ ...btnStyle(editSide === "ct", CT_COLOR), flex: 1, textAlign: "center" }}>🛡 CT</button>
-              <button onClick={() => setEditSide("t")} style={{ ...btnStyle(editSide === "t", T_COLOR), flex: 1, textAlign: "center" }}>💀 T</button>
-            </div>
-          )}
+          <div style={{ width: "100%", maxWidth: mapSize, display: "flex", gap: 4, marginBottom: 8 }}>
+            <button onClick={() => setEditSide("ct")} style={{ ...btnStyle(editSide === "ct", CT_COLOR), flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: CT_COLOR, flexShrink: 0 }} />CT
+            </button>
+            <button onClick={() => setEditSide("t")} style={{ ...btnStyle(editSide === "t", T_COLOR), flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: T_COLOR, flexShrink: 0 }} />T
+            </button>
+          </div>
           <style>{"@media (max-width: 500px) { #util-grid { grid-template-columns: repeat(2, 1fr) !important; } }"}</style>
           <div id="minimap-container" style={{ position: "relative", background: "rgba(255,255,255,0.02)", border: `1px solid ${editMode ? `${sideColor}30` : "rgba(255,255,255,0.06)"}`, borderRadius: 10, overflow: "hidden", width: "100%", maxWidth: mapSize, aspectRatio: "1", cursor: editMode ? "crosshair" : "default" }}>
             <svg id="lineup-svg" viewBox="0 0 100 100" onClick={handleSvgClick} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", color: mapColor, touchAction: "none" }}>
@@ -691,7 +693,7 @@ export default function CS2Lineups() {
           </div>
 
           {/* Lineup list */}
-          <div style={{ marginTop: 14 }}>
+          <div style={{ marginTop: 14, maxWidth: mapSize }}>
             {filtered.length === 0 && editFiltered.length === 0 && !editMode && <div style={{ textAlign: "center", padding: 30, color: "#888", fontSize: 16, fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>No {activeUtil}s saved for {map.name} yet</div>}
             {editMode && editFiltered.length === 0 && <div style={{ textAlign: "center", padding: 20, color: "#888", fontSize: 18, fontFamily: "Barlow Condensed", letterSpacing: "0.1em" }}>Click the map to start placing lineups</div>}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
