@@ -2,7 +2,7 @@ const DUST2_RADAR = "data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX
 
 import { useState, useCallback, useMemo } from "react";
 
-const TAB_COLORS = ["#ff9e9e", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff", "#a0c4ff", "#bdb2ff", "#e8b5ff", "#ffc2f1"];
+const TAB_COLORS = ["#ffadad", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff", "#a0c4ff", "#bdb2ff", "#e8b5ff", "#ffc2f1"];
 
 const MAPS = {
   ancient: {
