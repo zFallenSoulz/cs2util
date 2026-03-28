@@ -3,7 +3,7 @@ const DUST2_RADAR = "data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX
 import { useState, useCallback, useMemo } from "react";
 
 const MAPS = {
-  ancient: {
+    ancient: {
     name: "Ancient", color: "#ffadad",
     lineups: []
   },
@@ -42,7 +42,7 @@ const MAPS = {
 };
 
 const UTIL_TYPES = [
-  { key: "smoke", label: "Smokes", icon: "☁️", color: "#8ab4f8" },
+  { key: "smoke", label: "Smokes", icon: "💨", color: "#8ab4f8" },
   { key: "molotov", label: "Molotovs", icon: "🔥", color: "#f28b44" },
   { key: "flash", label: "Flashes", icon: "⚡", color: "#f7e44d" },
   { key: "grenade", label: "Grenades", icon: "💥", color: "#e05555" },
@@ -95,11 +95,26 @@ const MAP_OUTLINES = {
 };
 
 export default function CS2Lineups() {
+  // Profile code for cross-device sync
+  const [profileCode, setProfileCode] = useState(() => {
+    try { return localStorage.getItem("cs2util_profileCode") || ""; } catch { return ""; }
+  });
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileInput, setProfileInput] = useState("");
+
+  const prefix = profileCode ? `cs2util_${profileCode}_` : "cs2util_";
+
   // Load persisted state from localStorage
   const load = (key, fallback) => {
-    try { const v = localStorage.getItem(`cs2util_${key}`); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+    try { const v = localStorage.getItem(`${prefix}${key}`); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
   };
-  const save = (key, val) => { try { localStorage.setItem(`cs2util_${key}`, JSON.stringify(val)); } catch {} };
+  const save = (key, val) => { try { localStorage.setItem(`${prefix}${key}`, JSON.stringify(val)); } catch {} };
+
+  // Resizable minimap
+  const [mapSize, setMapSize] = useState(() => {
+    try { const v = localStorage.getItem(`${prefix}mapSize`); return v ? parseInt(v) : 480; } catch { return 480; }
+  });
+  const [resizing, setResizing] = useState(false);
 
   const [activeMap, setActiveMap] = useState(() => load("activeMap", "dust2"));
   const [activeUtil, setActiveUtil] = useState(() => load("activeUtil", "smoke"));
@@ -257,6 +272,43 @@ export default function CS2Lineups() {
   const setActiveMapP = (k) => { setActiveMap(k); save("activeMap", k); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); setSelectedEditOrigin(null); if (editMode) setEditStep("place_landing"); };
   const setActiveUtilP = (k) => { setActiveUtil(k); save("activeUtil", k); setSelectedSpot(null); setSelectedOrigin(null); setActiveEditId(null); };
 
+  // Profile code switch
+  const switchProfile = (code) => {
+    const trimmed = code.trim();
+    localStorage.setItem("cs2util_profileCode", trimmed);
+    setProfileCode(trimmed);
+    setShowProfile(false);
+    // Force reload to pick up new prefix
+    window.location.reload();
+  };
+
+  // Minimap resize
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setResizing(true);
+    const startY = e.touches ? e.touches[0].clientY : e.clientY;
+    const startSize = mapSize;
+    const onMove = (ev) => {
+      const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const delta = clientY - startY;
+      const newSize = Math.max(200, Math.min(800, startSize + delta));
+      setMapSize(newSize);
+    };
+    const onEnd = () => {
+      setResizing(false);
+      const el = document.getElementById("minimap-container");
+      if (el) { save("mapSize", el.offsetWidth); }
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onEnd);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onEnd);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onEnd);
+  }, [mapSize]);
+
   const btnStyle = (active, color) => ({
     padding: "6px 14px", fontSize: 12, fontWeight: 600, fontFamily: "Barlow Condensed",
     letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
@@ -275,6 +327,13 @@ export default function CS2Lineups() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: editMode ? sideColor : utilMeta.color, boxShadow: `0 0 10px ${editMode ? sideColor : utilMeta.color}60` }} />
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#f0f0f0" }}>MY LINEUPS</h1>
+          {profileCode && <span style={{ fontSize: 9, color: "#444", fontFamily: "Barlow Condensed", letterSpacing: "0.1em", background: "rgba(255,255,255,0.04)", padding: "2px 6px", borderRadius: 3 }}>{profileCode}</span>}
+          <button onClick={() => { setShowProfile(true); setProfileInput(profileCode); }} style={{
+            marginLeft: "auto", padding: "5px 10px", fontSize: 11, fontWeight: 600, fontFamily: "Barlow Condensed",
+            letterSpacing: "0.08em", cursor: "pointer", borderRadius: 5,
+            background: "rgba(255,255,255,0.03)", color: "#666",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}>👤</button>
           <button onClick={toggleEditMode} style={{
             marginLeft: "auto", padding: "5px 16px", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani",
             letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", borderRadius: 5,
@@ -338,6 +397,37 @@ export default function CS2Lineups() {
         </div>
       )}
 
+      {/* Profile modal */}
+      {showProfile && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setShowProfile(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#1a1c22", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 20, width: "100%", maxWidth: 340 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f0f0f0", fontFamily: "Rajdhani", letterSpacing: "0.1em" }}>PROFILE SYNC</h3>
+              <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", color: "#666", fontSize: 18, cursor: "pointer" }}>✕</button>
+            </div>
+            <p style={{ fontSize: 12, color: "#888", fontFamily: "Barlow Condensed", lineHeight: 1.6, margin: "0 0 12px" }}>
+              Enter the same code on any device to share your lineups. Leave empty for local-only storage.
+            </p>
+            {profileCode && <div style={{ fontSize: 11, color: "#555", fontFamily: "Barlow Condensed", marginBottom: 8 }}>Current: <span style={{ color: "#8ab4f8" }}>{profileCode}</span></div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="text" value={profileInput} onChange={e => setProfileInput(e.target.value)}
+                placeholder="Enter your sync code"
+                style={{ flex: 1, padding: "8px 12px", fontSize: 13, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#f0f0f0", fontFamily: "Barlow Condensed", outline: "none" }} />
+              <button onClick={() => switchProfile(profileInput)} style={{
+                padding: "8px 16px", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani", borderRadius: 6, cursor: "pointer",
+                background: "#8ab4f820", color: "#8ab4f8", border: "1px solid #8ab4f840",
+              }}>LOAD</button>
+            </div>
+            {profileCode && <button onClick={() => switchProfile("")} style={{
+              marginTop: 10, width: "100%", padding: "6px", fontSize: 11, fontFamily: "Barlow Condensed",
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 4,
+              color: "#555", cursor: "pointer",
+            }}>Clear profile (use local only)</button>}
+          </div>
+        </div>
+      )}
+
       {/* Utility filter + side selector */}
       <div style={{ display: "flex", gap: 4, padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", flexWrap: "wrap", alignItems: "center" }}>
         {UTIL_TYPES.map(u => {
@@ -381,7 +471,7 @@ export default function CS2Lineups() {
       {/* Main */}
       <div style={{ display: "flex", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 360px", padding: 20, minWidth: 300 }}>
-          <div style={{ position: "relative", background: "rgba(255,255,255,0.02)", border: `1px solid ${editMode ? `${sideColor}30` : "rgba(255,255,255,0.06)"}`, borderRadius: 10, overflow: "hidden", aspectRatio: "1", maxWidth: 480, cursor: editMode ? "crosshair" : "default" }}>
+          <div id="minimap-container" style={{ position: "relative", background: "rgba(255,255,255,0.02)", border: `1px solid ${editMode ? `${sideColor}30` : "rgba(255,255,255,0.06)"}`, borderRadius: 10, overflow: "hidden", width: "100%", maxWidth: mapSize, aspectRatio: "1", cursor: editMode ? "crosshair" : "default" }}>
             <svg id="lineup-svg" viewBox="0 0 100 100" onClick={handleSvgClick} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", color: map.color, touchAction: "none" }}>
               {MAP_OUTLINES[activeMap]}
 
@@ -467,6 +557,15 @@ export default function CS2Lineups() {
                 return <circle cx={dot.landX} cy={dot.landY} r="6" fill="none" stroke={c} strokeWidth="0.3" strokeDasharray="1 1" opacity="0.5"><animate attributeName="r" from="5" to="10" dur="2s" repeatCount="indefinite" /><animate attributeName="opacity" from="0.5" to="0" dur="2s" repeatCount="indefinite" /></circle>;
               })()}
             </svg>
+            {/* Resize handle */}
+            <div onMouseDown={handleResizeStart} onTouchStart={handleResizeStart}
+              style={{ position: "absolute", bottom: 0, right: 0, width: 20, height: 20, cursor: "nwse-resize", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" style={{ opacity: 0.3 }}>
+                <line x1="9" y1="1" x2="1" y2="9" stroke="#888" strokeWidth="1"/>
+                <line x1="9" y1="4" x2="4" y2="9" stroke="#888" strokeWidth="1"/>
+                <line x1="9" y1="7" x2="7" y2="9" stroke="#888" strokeWidth="1"/>
+              </svg>
+            </div>
           </div>
 
           {/* Lineup list */}
